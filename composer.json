@@ -1,0 +1,21 @@
+{
+	"name":	"jahan/ui",
+	"type": "library",
+	"homepage": "https://github.com/seanjahanpour/ui",
+	"license": "MIT",
+	"authors": [
+		{
+			"name": "Sean Jahanpour",
+			"email": "sean@jahanpour.com"
+		}
+	],
+	"description": "",
+	"require": {
+		"php": ">7.2"
+	},
+	"autoload": {
+		"psr-4": {
+			"Jahan\\UI\\":"src/"
+		}
+	}
+}
