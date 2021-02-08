@@ -11,8 +11,11 @@ class Element
 	public $id;                     /* This instance's id. Generated and stored by constructor, can be overwritten */
 	protected $children = [];       /* To store children of this html element */
 	protected $tags = [];           /* To store tags for children and scalar values for this element */
-	protected $properties = [];     /* Properties of this element */
-	protected $container = true;    /* Elements are by default a container. A contrainer is created to store other elements. It can be considered as the top of the tree. */
+	protected $properties = [];     /* Properties of this element.
+						property name of "_attribute_" is special and is printed without name or quotes.
+						for example: $properties['_attribute_']='disabled'; will print: <tagname ...  disabled ..></tagname>
+					*/
+	public $print_tag = true;    /* Elements are by default a container. A contrainer is created to store other elements. It can be considered as the top of the tree. */
 
 	protected const VOID_ELEMENTS = ['area','base','br','col','command','embed','hr','img','input','keygen','link','meta','param','source','track','wbr'];
 
@@ -31,14 +34,18 @@ class Element
 	{
 		$this->id = 'JPHCE' . self::$counter++;	//JPHCE: Jahan PHP Html Creator Element
 		if(!empty($properties)) {
-			$this->setupProperties($properties);
+			$this->setup_properties($properties);
 		}
 
 		$this->bootstrap();
 	}
 
 	/**
-	 * Setter
+	 * This setter makes statements such as below possible:
+	 * 	The word "_content_" is special and values are treated as content for this element and printed between open and close tag.
+	 * 	$entity->_content_ = 'hello';   //will print  <sometag ...>hello</sometag>
+	 * 	$entity->label = new Element('label');
+	 * 	$entity->style = 'color:red';  // will print <sometag ... style="color:red"..>...</sometag>
 	 * 
 	 * If value is scalar value, we add that to list of properties for this element. If object is given, object is assumed to be a child.
 	 *
@@ -48,19 +55,34 @@ class Element
 	public function __set($property, $value)
 	{
 		if(is_scalar($value)) {
-			$this->children[] = $value;
-			$this->tags[] = '__scalar__' . $property;
+			if($property == '_content_') {
+				$this->children[] = $value;
+				$this->tags[] = '__scalar__';				
+			} else {
+				$this->add_property($property, $value);
+			}
 		} elseif(is_object($value)) {
-			$value->container = false;
 			$this->children[] = $value;
 			$this->tags[] = $property;
 		}
 	}
 
-	public function __call($name, $arguments)
+	public function add_property($property, $value)
+	{
+		$this->properties[$property] = $value;
+	}
+
+	/**
+	 * This is to make statement like below possible:
+	 * 	$obj->div('form-group');
+	 *
+	 * @param string $name
+	 * @param array|string $arguments
+	 * @return Element
+	 */
+	public function __call(string $name, $arguments) : object
 	{
 		$obj = new self(...$arguments);
-		$obj->container = false;
 		$this->children[] = $obj;
 		$this->tags[] = $name;
 
@@ -69,39 +91,60 @@ class Element
 
 	public function __toString()
 	{
+		return $this->toString();
+	}
+
+	public function toString()
+	{
 		$ret = '';
-		if(!$this->container) {
+		if($this->print_tag) {
 			/*
-			Since name of container element is uknown, and parent is not a Element, we don't know the name of this element to print.
-			We don't pring anything when it is a container element. Any element that has a Element parent, parent know the tag name for it,
-			so only properties are printed; opening tag and tag name is printed by the parent.
+			Since name of container element is uknown, opening tag is partially printed. Any element that has a Element parent, parent know the tag name and will print before calling this function,
 			*/
-			$ret .= ' "id"="' . $this->id . '"';
+			$ret .= ' id="' . $this->id . '"';
 			if( !empty($this->properties) ) foreach($this->properties as $name=>$value) {
-				$ret .= " \"$name\"=\"$value\"";
+				if($name == '_attribute_') {
+					$ret .= " $value";
+				} else {
+					$ret .= " $name=\"$value\"";
+				}
 			}
 			$ret .= '>';
+
+			//if element doesn't have any children, don't pring new line character for better formatting.
+			if(!empty($this->children)) {
+				$tmp_arrray_count = array_count_values($this->tags);
+				
+				//are there real childre, or is it only content?
+				if(!empty($tmp_arrray_count['__scalar__'])  &&  $tmp_arrray_count['__scalar__'] == count($this->tags)) {
+					//no children
+				} else {
+					$ret .= PHP_EOL;
+				}
+			}
 		}
 
 		if( !empty($this->children) ) foreach($this->children as $index=>$item) {
-			if( substr($this->tags[$index],0,10) == '__scalar__') {
+			if( $this->tags[$index] == '__scalar__') {
+				//contents
 				$ret .= $item;
 				continue;
 			} else {
-				$ret .= '<' . $this->tags[$index] . (string) $item;
-
+				$ret .=  "\t<" . $this->tags[$index] . (string) $item;
 			}
 
-			// If element is not a void html element, add closing tag
+			// If element is not a void html element, add closing tag, otherwise just new line character
 			if(   !in_array( strtolower($this->tags[$index]), self::VOID_ELEMENTS )   ) {
-				$ret .= '</' . $this->tags[$index] . '>';
+				$ret .= '</' . $this->tags[$index] . '>' . PHP_EOL;
+			} else {
+				$ret .= PHP_EOL;
 			}
 		}
 
 		return $ret;
 	}
 
-	protected function setupProperties($properties)
+	protected function setup_properties($properties)
 	{
 		//ways to accept properties:
 		//#1: ('value of class property')
@@ -140,5 +183,13 @@ class Element
 	 */
 	protected function bootstrap()
 	{
+	}
+
+	/*
+	* create and return any javascript [or jQuery if used in this project] for this input element in form of a string.
+	*/
+	public function javascript()
+	{
+		return '';
 	}
 }
