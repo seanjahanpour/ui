@@ -12,6 +12,8 @@ class Text
 	public $type = 'text';
 	public $class = 'form-control';
 	public $div_class = 'form-group';
+	public $help_class = 'form-text text-muted';
+	public $label_class = '';
 	public $placeholder = '';
 	public $required = false;
 	public $readonly = false;
@@ -29,7 +31,7 @@ class Text
 		return $this->toString();
 	}
 
-	public function toString()
+	protected function common_setup()
 	{
 		$input_properties = [];
 
@@ -47,24 +49,6 @@ class Text
 			$input_properties['_attribute_'] = 'required';
 		}
 
-		/*
-		<div class="form-group">
-			<label for="inputid">Label</label>
-			<input type="text" class="form-control" id="id" area-describedby="texthelp" placeholder="email">
-			<small id="texthelp" class="form-text text-muted help">Explanation and tips.</small>
-		</div>
-		*/
-		$div = $this->make_div($this->div_class);
-		
-		//help
-		if(!empty($this->help)) {
-			$help = $this->make_help();
-			$help_id = $help->id;
-		} else {
-			$help_id = '';
-		}
-
-		//input
 		$input_properties['class'] = $this->class;
 		$input_properties['type'] = $this->type;
 
@@ -76,52 +60,71 @@ class Text
 			$input_properties['placeholder'] = $this->placeholder;
 		}
 
-		if(!empty($help_id)) {
-			$input_properties['aria-describedby'] = $help_id;
-		}
-		
 		if(!empty($this->value)) {
 			$input_properties['value'] = $this->value;
 		}
 
-		$input = $this->make_input($input_properties);
-		$input_id = $input->id;
+		return $input_properties;
+	}
 
+	public function toString()
+	{
+		$input_properties = $this->common_setup();
+		
+		/*
+		<div class="form-group">
+			<label for="inputid">Label</label>
+			<input type="text" class="form-control" id="id" area-describedby="texthelp" placeholder="email">
+			<small id="texthelp" class="form-text text-muted help">Explanation and tips.</small>
+		</div>
+		*/
 
-		if(!empty($this->label)) {
-			$label = $this->make_label($input_id);
-			$label->_content_ = $this->label;
-			$div->label = $label;
+		$div = new Element($this->div_class);
+		
+		$help = $this->make_help();
+
+		//input
+		if(!empty($help)) {
+			$input_properties['aria-describedby'] = $help->id;
 		}
+	
+		$input = new Element($input_properties);
+
+		$div->label = $this->make_label($input->id);
 		
 		$div->input = $input;
 
-		if(!empty($help_id)) {
+		if(!empty($help)) {
 			$div->small = $help;
 		}
 
-		return '<div' . (string) $div . '</div>';
+		return '<div' . (string) $div . '</div>' . PHP_EOL;
 	}
 
 	protected function make_label($input_id)
 	{
-		return new Element('for', $input_id);
-	}
+		if(!empty($this->label)) {
+			$label = new Element('for', $input_id);
+			$label->_content_ = $this->label;
+			if(!empty($this->label_class)) {
+				$label->class = $this->label_class;
+			}
 
-	protected function make_input(array $input_properties)
-	{
-		return new Element($input_properties);
+			return $label;
+		}
+
+		return null;
 	}
 
 	protected function make_help()
 	{
-		$help = new Element('form-text text-muted');
-		$help->_content_ = $this->help;
-		return $help;		
-	}
-
-	protected function make_div($div_class)
-	{
-		return new Element($div_class);
+		//help
+		if(!empty($this->help)) {
+			$help = new Element($this->help_class);
+			$help->_content_ = $this->help;
+			return $help;
+		} else {
+			return null;
+		}		
 	}
 }

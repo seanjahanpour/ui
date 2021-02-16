@@ -46,6 +46,7 @@ class Element
 	 * 	$entity->_content_ = 'hello';   //will print  <sometag ...>hello</sometag>
 	 * 	$entity->label = new Element('label');
 	 * 	$entity->style = 'color:red';  // will print <sometag ... style="color:red"..>...</sometag>
+	 * 	$entity->_attribute_ = 'checked;  //_attribute_ is special case and will only print it as it inside the opening tag.
 	 * 
 	 * If value is scalar value, we add that to list of properties for this element. If object is given, object is assumed to be a child.
 	 *
